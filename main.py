@@ -800,7 +800,7 @@ class AIWhiteboardApp:
         self._hands = mp_h.Hands(
             static_image_mode=False,
             max_num_hands=Config.MAX_HANDS,
-            model_complexity=Config.MODEL_COMPLEXITY,
+            model_complexity=Config.MP_MODEL_COMPLEXITY,
             min_detection_confidence=Config.MP_DETECTION_CONFIDENCE,
             min_tracking_confidence=Config.MP_TRACKING_CONFIDENCE,
         )
@@ -939,22 +939,30 @@ class AIWhiteboardApp:
     def _composite(self, frame: np.ndarray) -> None:
         """Blend canvas ink onto frame in-place."""
         canvas_bgr = self._canvas.image
+
         # Build binary mask of painted pixels
         cv2.cvtColor(canvas_bgr, cv2.COLOR_BGR2GRAY, dst=self._comp_mask)
+
         cv2.threshold(
-            self._comp_mask, 1, 255, cv2.THRESH_BINARY, dst=self._comp_mask
+            self._comp_mask,
+            1,
+            255,
+            cv2.THRESH_BINARY,
+            dst=self._comp_mask
         )
+
         # Where mask is set: blend strongly toward canvas colour
         ink_region = self._comp_mask > 0
-        blended = cv2.addWeighted(
-    frame,
-    1.0 - Config.CANVAS_INK_WEIGHT,
-    canvas_bgr,
-    Config.CANVAS_INK_WEIGHT,
-    0
-)
 
-frame[ink_region] = blended[ink_region]
+        blended = cv2.addWeighted(
+            frame,
+            1.0 - Config.CANVAS_INK_WEIGHT,
+            canvas_bgr,
+            Config.CANVAS_INK_WEIGHT,
+            0
+        )
+
+        frame[ink_region] = blended[ink_region]
 
     # ──────────────────────────────────────────────────────────
     # KEYBOARD HANDLER
