@@ -939,30 +939,17 @@ class AIWhiteboardApp:
     def _composite(self, frame: np.ndarray) -> None:
         """Blend canvas ink onto frame in-place."""
         canvas_bgr = self._canvas.image
-
         # Build binary mask of painted pixels
         cv2.cvtColor(canvas_bgr, cv2.COLOR_BGR2GRAY, dst=self._comp_mask)
-
         cv2.threshold(
-            self._comp_mask,
-            1,
-            255,
-            cv2.THRESH_BINARY,
-            dst=self._comp_mask
+            self._comp_mask, 1, 255, cv2.THRESH_BINARY, dst=self._comp_mask
         )
-
         # Where mask is set: blend strongly toward canvas colour
         ink_region = self._comp_mask > 0
-
-        blended = cv2.addWeighted(
-            frame,
-            1.0 - Config.CANVAS_INK_WEIGHT,
-            canvas_bgr,
-            Config.CANVAS_INK_WEIGHT,
-            0
-        )
-
-        frame[ink_region] = blended[ink_region]
+        frame[ink_region] = cv2.addWeighted(
+            frame, 1.0 - Config.CANVAS_INK_WEIGHT,
+            canvas_bgr, Config.CANVAS_INK_WEIGHT, 0,
+        )[ink_region]
 
     # ──────────────────────────────────────────────────────────
     # KEYBOARD HANDLER
