@@ -946,10 +946,15 @@ class AIWhiteboardApp:
         )
         # Where mask is set: blend strongly toward canvas colour
         ink_region = self._comp_mask > 0
-        frame[ink_region] = cv2.addWeighted(
-            frame, 1.0 - Config.CANVAS_INK_WEIGHT,
-            canvas_bgr, Config.CANVAS_INK_WEIGHT, 0,
-        )[ink_region]
+        blended = cv2.addWeighted(
+    frame,
+    1.0 - Config.CANVAS_INK_WEIGHT,
+    canvas_bgr,
+    Config.CANVAS_INK_WEIGHT,
+    0
+)
+
+frame[ink_region] = blended[ink_region]
 
     # ──────────────────────────────────────────────────────────
     # KEYBOARD HANDLER
