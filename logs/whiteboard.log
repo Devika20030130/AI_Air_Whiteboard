@@ -1,0 +1,6 @@
+2026-05-08 23:24:34  [INFO    ]  AIWhiteboard.__main__  —  AI Air Whiteboard v5.0  —  Hybrid OCR Edition
+2026-05-08 23:24:36  [INFO    ]  AIWhiteboard.__main__  —  Camera  [1280x720 @ 30 FPS]
+2026-05-08 23:24:36  [INFO    ]  AIWhiteboard.__main__  —  Canvas loaded ← drawings\autosave.png
+2026-05-08 23:24:36  [INFO    ]  AIWhiteboard.__main__  —  Running. Press [h] for help, [q] to quit.
+2026-05-08 23:25:05  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-08 23:25:05  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  Loading TrOCR model 'microsoft/trocr-base-handwritten' on cpu …  (first run downloads ~340 MB)
