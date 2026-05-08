@@ -1,4 +1,7 @@
 venv/
 __pycache__/
 *.pyc
-drawing.png
+models/
+*.pt
+*.pth
+drawings/autosave.png
