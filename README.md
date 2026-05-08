@@ -1,133 +1,140 @@
-# ✋ AI Air Whiteboard — v4.0
+# ✋ AI Air Whiteboard — v5.0  (Hybrid OCR Edition)
 
-> A real-time, gesture-driven virtual whiteboard powered by **MediaPipe Hands**,
-> **OpenCV**, **Tesseract OCR** and **SymPy** — refactored to production quality.
-
----
-
-## ✨ Features
-
-| Category | Details |
-|---|---|
-| **Gesture Drawing** | Index-finger-only stroke with EMA smoothing |
-| **Lift Pen** | Index + middle (Space mode) — no accidental marks |
-| **Eraser** | Full open palm — configurable radius |
-| **Clear Board** | Closed fist held for ~22 frames — debounced to prevent accidents |
-| **Multi-hand** | Up to 2 independent hands tracked simultaneously |
-| **Colour Palette** | 8 colours, selected by keyboard `1`–`8` |
-| **Brush Size** | Adjustable live with `+` / `-` |
-| **Undo / Redo** | Copy-on-write stack — up to 40 steps |
-| **Save / Load** | Timestamped PNG saves + autosave on quit |
-| **OCR + Solve** | Adaptive-threshold pipeline → Tesseract → SymPy |
-| **FPS Counter** | 30-frame rolling average displayed on HUD |
-| **Help Overlay** | Press `h` to toggle keyboard shortcut panel |
+> Production-grade gesture whiteboard with a **three-engine hybrid OCR pipeline**:
+> **TrOCR** (transformer) → **EasyOCR** → **Tesseract** — with automatic
+> confidence-gated waterfall fallback and **SymPy** equation solving.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Project Structure
 
 ```
-AIWhiteboardApp          ← top-level orchestrator / main loop
-├── WebcamManager        ← low-latency capture (1-frame buffer)
-├── mp.solutions.Hands   ← MediaPipe hand landmark detector
-├── GestureClassifier    ← stateless landmark → GestureState
-├── GestureDebouncer     ← per-hand state machine (confirm + cooldown)
-├── CoordinateSmoother   ← per-hand EMA fingertip smoother
-├── CanvasManager        ← BGR drawing surface + undo/redo/save/load
-├── OCRProcessor         ← adaptive threshold → Tesseract → SymPy
-└── UIRenderer           ← FPS, HUD, palette, notifications, help panel
+ai-air-whiteboard/
+│
+├── main.py                  ← Application entry point
+├── config.py                ← All configuration constants (single source of truth)
+├── requirements.txt         ← Pinned dependencies
+├── README.md
+│
+├── ocr/
+│   ├── __init__.py
+│   ├── preprocess.py        ← 8-stage OpenCV preprocessing pipeline
+│   ├── trocr_engine.py      ← Microsoft TrOCR transformer engine
+│   ├── easyocr_engine.py    ← EasyOCR CRAFT+CRNN engine
+│   ├── tesseract_engine.py  ← Tesseract baseline engine
+│   ├── equation_parser.py   ← SymPy sanitiser + solver
+│   └── hybrid_ocr.py        ← Waterfall orchestrator
+│
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py            ← Coloured console + rotating file logger
+│   ├── image_utils.py       ← Shared OpenCV / NumPy helpers
+│   └── benchmark.py         ← Per-engine timing + accuracy report
+│
+├── drawings/                ← Auto-created; saves + autosave.png
+└── logs/                    ← Auto-created; whiteboard.log
 ```
 
-Every subsystem is a self-contained class with no shared mutable globals,
-making each one independently testable and replaceable.
-
 ---
 
-## ⚡ Optimisations (v3 → v4)
+## ⚡ OCR Pipeline Architecture
 
-### Performance
-| Optimisation | Impact |
-|---|---|
-| `CAP_PROP_BUFFERSIZE = 1` | Cuts camera latency by ~2 frames |
-| `rgb.flags.writeable = False` before `hands.process()` | Skips MediaPipe's internal copy |
-| `MP_MODEL_COMPLEXITY = 0` | Fastest model; accuracy still excellent for gestures |
-| Ink-only compositing (mask-based) | Avoids full-frame `addWeighted` every tick |
-| EMA weights pre-computed & cached | Removes repeated `np.array` allocation per frame |
-| Morph kernel allocated once | Removes per-OCR-call `getStructuringElement` |
-
-### Gesture Quality
-| Optimisation | Impact |
-|---|---|
-| `GestureDebouncer` — N-frame confirmation window | Eliminates single-frame flickers |
-| Independent cooldown after every transition | Prevents rapid state oscillation |
-| FIST requires 22-frame hold + one-shot trigger | Prevents accidental board clears |
-| Eraser requires **all 4** fingers up | Resolves eraser/space gesture conflict |
-| Priority order: FIST > ERASE > DRAW > SPACE | Unambiguous classification |
-| `GestureClassifier` is stateless | Easy to unit-test; no hidden dependencies |
-
-### Drawing Quality
-| Optimisation | Impact |
-|---|---|
-| Exponential Moving Average smoother | Removes high-frequency jitter |
-| `MIN_DRAW_DIST` threshold | Skips `draw_line` for micro-movements |
-| `cv2.LINE_AA` anti-aliased strokes | Smooth diagonal lines |
-| `commit_stroke()` on pen-lift | Correct undo boundaries per stroke |
-| Dirty-pixel counter triggers undo snapshot | Fewer snapshots; less memory |
-
-### OCR Accuracy
-| Optimisation | Impact |
-|---|---|
-| 2.5× upscale with `INTER_CUBIC` | Matches ~300 DPI Tesseract sweet-spot |
-| `adaptiveThreshold` (Gaussian, 21-block) | Handles uneven brush opacity |
-| Morphological close × 2 iterations | Bridges micro-gaps in strokes |
-| `fastNlMeansDenoising` | Removes speckle noise before OCR |
-| Character whitelist in Tesseract config | Discards non-equation glyphs |
-| PSM 6 + OEM 3 (LSTM) | Best Tesseract mode for block handwriting |
-
----
-
-## 🖥️ System Requirements
-
-- Python **3.11+**
-- **Tesseract OCR** binary installed (see below)
-- Webcam (USB or built-in)
-- OS: Windows 10/11 · macOS 12+ · Ubuntu 20.04+
-
----
-
-## 🚀 Installation
-
-### 1 — Clone
-
-```bash
-git clone https://github.com/yourname/ai-air-whiteboard.git
-cd ai-air-whiteboard
+```
+Canvas BGR image
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│         EquationPreprocessor            │
+│  crop → upscale → adaptiveThreshold     │
+│  → morphClose → contourClean → denoise  │
+└──────────────┬──────────────────────────┘
+               │ binary + PIL image
+       ┌───────▼────────────────────────────────────┐
+       │         HybridOCRPipeline  (waterfall)      │
+       │                                             │
+       │  1. TrOCREngine   (transformer, beam×4)     │
+       │        ↓  if conf < 0.55                    │
+       │  2. EasyOCREngine (CRAFT + CRNN, GPU)       │
+       │        ↓  if conf < 0.55                    │
+       │  3. TesseractEngine (LSTM, PSM-6)           │
+       │                                             │
+       │  → best result → EquationParser → SymPy    │
+       └─────────────────────────────────────────────┘
 ```
 
-### 2 — Python dependencies
+---
 
-```bash
+## 🚀 Installation (PowerShell step-by-step)
+
+### 1 — Navigate to your project
+
+```powershell
+cd D:\AI_Projects\Air_WritingBoard
+```
+
+### 2 — Activate your existing venv
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+### 3 — Copy new files into place
+
+```powershell
+# Copy the files delivered above into the project root
+# config.py, main.py, requirements.txt, README.md
+
+# Create package folders
+New-Item -ItemType Directory -Force -Path ocr, utils, drawings, logs
+
+# Create __init__.py files
+New-Item -ItemType File -Force -Path ocr\__init__.py
+New-Item -ItemType File -Force -Path utils\__init__.py
+```
+
+### 4 — Install Tesseract binary (Windows)
+
+Download and run the installer from:
+https://github.com/UB-Mannheim/tesseract/wiki
+
+Then set the environment variable (replace path if different):
+
+```powershell
+$env:TESSERACT_PATH = "C:\Program Files\Tesseract-OCR\tesseract.exe"
+# To persist across sessions:
+[System.Environment]::SetEnvironmentVariable(
+    "TESSERACT_PATH",
+    "C:\Program Files\Tesseract-OCR\tesseract.exe",
+    "User"
+)
+```
+
+### 5 — Install Python dependencies
+
+**CPU only (works on any machine):**
+
+```powershell
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3 — Tesseract binary
+**GPU (CUDA 12.1 — recommended for TrOCR speed):**
 
-| Platform | Command |
-|---|---|
-| **Windows** | Download installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) |
-| **macOS** | `brew install tesseract` |
-| **Ubuntu / Debian** | `sudo apt install tesseract-ocr` |
-
-If Tesseract is installed to a non-default path, set:
-
-```bash
-export TESSERACT_PATH="/custom/path/to/tesseract"   # Linux / macOS
-set TESSERACT_PATH="C:\Program Files\Tesseract-OCR\tesseract.exe"  # Windows
+```powershell
+pip install --upgrade pip
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
 ```
 
-### 4 — Run
+Verify GPU is detected:
 
-```bash
+```powershell
+python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU only')"
+```
+
+### 6 — First run (TrOCR downloads ~340 MB on first OCR trigger)
+
+```powershell
 python main.py
 ```
 
@@ -140,70 +147,118 @@ python main.py
 | Gesture | Action |
 |---|---|
 | ☝️ Index finger only | **Draw** |
-| ✌️ Index + Middle | **Lift pen** (Space mode) |
-| ✋ All 4 fingers extended | **Erase** |
-| ✊ Closed fist (hold ~1 s) | **Clear entire board** |
+| ✌️ Index + Middle | **Lift pen** |
+| ✋ All 4 fingers | **Erase** |
+| ✊ Closed fist (hold ~1 s) | **Clear board** |
 
 ### Keyboard
 
 | Key | Action |
 |---|---|
-| `r` | Run OCR on canvas + solve equation |
+| `r` | Run **Hybrid OCR** + solve equation |
+| `d` | Toggle **OCR debug** visualisation window |
+| `b` | Run **benchmark** — compare all 3 engines |
 | `s` | Save drawing (timestamped PNG) |
-| `l` | Load last autosave |
+| `l` | Load autosave |
 | `z` | Undo |
 | `y` | Redo |
-| `+` / `-` | Increase / decrease brush size |
-| `1` – `8` | Select colour from palette |
-| `h` | Toggle keyboard shortcut overlay |
-| `q` | Quit (autosaves canvas) |
+| `+` / `-` | Brush size |
+| `1` – `8` | Select colour |
+| `h` | Toggle help overlay |
+| `q` | Quit + autosave |
 
 ---
 
 ## ⚙️ Configuration
 
-All tuneable constants are at the top of `main.py` inside the `Config` class.
-No need to touch any logic — just edit the values:
+All settings live in `config.py`.  Key options:
 
 ```python
-class Config:
-    CAMERA_INDEX      = 0          # 0 = default webcam
-    CAMERA_WIDTH      = 1280
-    CAMERA_HEIGHT     = 720
-    BRUSH_THICKNESS   = 8          # px
-    ERASER_RADIUS     = 45         # px
-    SMOOTH_ALPHA      = 0.45       # EMA weight (0 = laggy, 1 = raw)
-    FIST_CLEAR_FRAMES = 22         # frames fist must be held
-    MAX_UNDO_STEPS    = 40
-    OCR_SCALE         = 2.5        # upscale factor before OCR
-    SAVE_DIR          = "drawings"
+# Switch engine order (e.g. skip TrOCR for speed)
+hybrid.engine_priority = ("easyocr", "tesseract")
+
+# Lower threshold = accept lower-confidence results faster
+hybrid.accept_threshold = 0.40
+
+# Enable debug window (shows preprocessing stages + per-engine results)
+hybrid.debug_visualize = True
+
+# Force CPU even if CUDA is available
+# Set before importing config:  DEVICE = "cpu"
+
+# TrOCR model size: base (~340 MB) or large (~1.4 GB)
+trocr.model_name = "microsoft/trocr-large-handwritten"
 ```
 
 ---
 
-## 🗂️ Project Structure
+## 🔬 Benchmark Mode
+
+Press **`b`** in the app, or run standalone:
+
+```powershell
+python -m utils.benchmark --image drawings\autosave.png --runs 3
+```
+
+Sample output:
 
 ```
-ai-air-whiteboard/
-├── main.py            ← single-file application (all 10 sections)
-├── requirements.txt   ← pinned dependencies
-├── README.md          ← this file
-└── drawings/          ← auto-created; holds saves + autosave.png
+────────────────────────────────────────────────────────────────
+  OCR BENCHMARK REPORT   (runs per engine: 3)
+  Image: drawings\autosave.png
+────────────────────────────────────────────────────────────────
+  Engine         Text                       Conf       ms  Status
+────────────────────────────────────────────────────────────────
+  trocr          '2x + 5 = 11'            0.821    842.3  ✓
+  easyocr        '2x+5=11'                0.743    312.1  ✓
+  tesseract      '2x + 5 = 11'            0.680    124.7  ✓
+────────────────────────────────────────────────────────────────
+  🏆  Best confidence : trocr  (0.821)
+  ⚡  Fastest         : tesseract  (124.7 ms)
+────────────────────────────────────────────────────────────────
 ```
 
 ---
 
-## 🔭 Future Roadmap
+## 🐛 Troubleshooting
 
-- [ ] Multi-colour palette selection **by gesture** (pinch on swatch)
-- [ ] `--source video.mp4` CLI flag for file-based demo
-- [ ] FastAPI WebSocket stream for browser display
-- [ ] ONNX / TFLite model swap for MediaPipe to reduce CPU
-- [ ] GPU-accelerated canvas with CUDA OpenCV build
-- [ ] Unit tests for `GestureClassifier` and `CoordinateSmoother`
-- [ ] Export canvas as SVG (vectorise strokes)
-- [ ] Speech-to-equation input as OCR fallback
+| Problem | Fix |
+|---|---|
+| `TesseractNotFoundError` | Set `TESSERACT_PATH` env var to the `.exe` path |
+| `CUDA out of memory` | Set `trocr.device = "cpu"` in `config.py` |
+| TrOCR slow first run | Normal — model downloads ~340 MB once, then caches |
+| EasyOCR import error | `pip install easyocr` |
+| Camera not opening | Change `camera.index = 1` in `config.py` |
+| Low FPS | Set `mediapipe.model_complexity = 0` (already default) |
+| Black screen | Check that `CAP_DSHOW` is correct for your OS (set `use_dshow = False` on Linux/macOS) |
 
 ---
 
-*Built with ❤️ using MediaPipe · OpenCV · Tesseract · SymPy*
+## 📊 Engine Comparison
+
+| Engine | Best for | Speed | Accuracy |
+|---|---|---|---|
+| **TrOCR** | Cursive, mixed-case, complex math | ~800 ms | ⭐⭐⭐⭐⭐ |
+| **EasyOCR** | Printed + semi-cursive, multi-line | ~300 ms | ⭐⭐⭐⭐ |
+| **Tesseract** | Neat block handwriting | ~120 ms | ⭐⭐⭐ |
+
+---
+
+## 🔭 Roadmap
+
+- [ ] LaTeX rendering of solved equations via MathJax overlay
+- [ ] Speech-to-equation fallback (`whisper` integration)
+- [ ] FastAPI `/ocr` endpoint for browser-based demo
+- [ ] ONNX export of TrOCR for 3× faster CPU inference
+- [ ] Unit tests for `GestureClassifier`, `EquationParser`, `CoordinateSmoother`
+- [ ] Docker image with CUDA support
+
+---
+
+## 📄 Author
+
+Devika Das
+
+---
+
+*Built with MediaPipe · OpenCV · TrOCR · EasyOCR · Tesseract · SymPy*
