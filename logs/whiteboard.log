@@ -4,3 +4,41 @@
 2026-05-08 23:24:36  [INFO    ]  AIWhiteboard.__main__  —  Running. Press [h] for help, [q] to quit.
 2026-05-08 23:25:05  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
 2026-05-08 23:25:05  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  Loading TrOCR model 'microsoft/trocr-base-handwritten' on cpu …  (first run downloads ~340 MB)
+2026-05-11 19:57:11  [INFO    ]  AIWhiteboard.__main__  —  AI Air Whiteboard v5.0  —  Hybrid OCR Edition
+2026-05-11 19:57:13  [INFO    ]  AIWhiteboard.__main__  —  Camera  [1280x720 @ 30 FPS]
+2026-05-11 19:57:13  [INFO    ]  AIWhiteboard.__main__  —  Canvas loaded ← drawings\autosave.png
+2026-05-11 19:57:13  [INFO    ]  AIWhiteboard.__main__  —  Running. Press [h] for help, [q] to quit.
+2026-05-11 19:58:17  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-11 19:58:17  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  Loading TrOCR model 'microsoft/trocr-base-handwritten' on cpu …  (first run downloads ~340 MB)
+2026-05-11 20:01:34  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR model load                189891.83 ms
+2026-05-11 20:01:34  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR model ready on cpu.
+2026-05-11 20:01:38  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 3732.19 ms
+2026-05-11 20:01:38  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 43'  (conf 0.992)
+2026-05-11 20:01:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.992  200658.7 ms  '2 43'
+2026-05-11 20:01:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.992 ≥ 0.550)
+2026-05-11 20:01:38  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 43'  →  sanitised='243'
+2026-05-11 20:01:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 243.000
+2026-05-11 20:01:38  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 200662.9 ms
+2026-05-11 20:01:38  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.992  latency=200663 ms
+2026-05-11 20:03:39  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-11 20:03:42  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2795.00 ms
+2026-05-11 20:03:42  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 43'  (conf 0.992)
+2026-05-11 20:03:42  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.992   2800.4 ms  '2 43'
+2026-05-11 20:03:42  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.992 ≥ 0.550)
+2026-05-11 20:03:42  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 43'  →  sanitised='243'
+2026-05-11 20:03:42  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 243.000
+2026-05-11 20:03:42  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2803.4 ms
+2026-05-11 20:03:42  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.992  latency=2803 ms
+2026-05-11 20:04:49  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-11 20:04:52  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 3436.18 ms
+2026-05-11 20:04:52  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '12A2 .'  (conf 0.956)
+2026-05-11 20:04:52  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.956   3442.2 ms  '12A2 .'
+2026-05-11 20:04:52  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.956 ≥ 0.550)
+2026-05-11 20:04:52  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='12A2 .'  →  sanitised='12*A2.'
+2026-05-11 20:04:52  [WARNING ]  AIWhiteboard.ocr.equation_parser  —  Parser failed on '12*A2.': invalid syntax (<string>, line 1)
+2026-05-11 20:04:52  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Parser: ⚠ Parse error: invalid syntax (<string>, line 1)
+2026-05-11 20:04:52  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 3445.6 ms
+2026-05-11 20:04:52  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.956  latency=3446 ms
+2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  Shutting down …
+2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  Canvas saved → drawings\autosave.png
+2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  ✅  Clean shutdown complete.
