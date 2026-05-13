@@ -42,3 +42,109 @@
 2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  Shutting down …
 2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  Canvas saved → drawings\autosave.png
 2026-05-11 20:05:42  [INFO    ]  AIWhiteboard.__main__  —  ✅  Clean shutdown complete.
+2026-05-13 22:19:02  [INFO    ]  AIWhiteboard.__main__  —  AI Air Whiteboard v5.0  —  Hybrid OCR Edition
+2026-05-13 22:19:03  [INFO    ]  AIWhiteboard.__main__  —  Camera  [1280x720 @ 30 FPS]
+2026-05-13 22:19:03  [INFO    ]  AIWhiteboard.__main__  —  Canvas loaded ← drawings\autosave.png
+2026-05-13 22:19:03  [INFO    ]  AIWhiteboard.__main__  —  Running. Press [h] for help, [q] to quit.
+2026-05-13 22:19:34  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:19:34  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  Loading TrOCR model 'microsoft/trocr-base-handwritten' on cpu …  (first run downloads ~340 MB)
+2026-05-13 22:19:43  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR model load                5783.31 ms
+2026-05-13 22:19:43  [INFO    ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR model ready on cpu.
+2026-05-13 22:19:49  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 5508.68 ms
+2026-05-13 22:19:49  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 1 ) .'  (conf 0.985)
+2026-05-13 22:19:49  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.985  15336.6 ms  '2 1 ) .'
+2026-05-13 22:19:49  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.985 ≥ 0.550)
+2026-05-13 22:19:49  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 1 ) .'  →  sanitised='21).'
+2026-05-13 22:19:49  [WARNING ]  AIWhiteboard.ocr.equation_parser  —  Parser failed on '21).': ('EOF in multi-line statement', (2, 0))
+2026-05-13 22:19:49  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Parser: ⚠ Parse error: ('EOF in multi-line statement', (2, 0))
+2026-05-13 22:19:49  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 15338.9 ms
+2026-05-13 22:19:49  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.985  latency=15339 ms
+2026-05-13 22:21:09  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:21:12  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2140.99 ms
+2026-05-13 22:21:12  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 13'  (conf 0.982)
+2026-05-13 22:21:12  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.982   2152.5 ms  '2 13'
+2026-05-13 22:21:12  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.982 ≥ 0.550)
+2026-05-13 22:21:12  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 13'  →  sanitised='213'
+2026-05-13 22:21:12  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 213.000
+2026-05-13 22:21:12  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2154.7 ms
+2026-05-13 22:21:12  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.982  latency=2155 ms
+2026-05-13 22:21:31  [INFO    ]  AIWhiteboard.__main__  —  OCR debug visualisation: ON
+2026-05-13 22:21:36  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:21:38  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 1966.66 ms
+2026-05-13 22:21:38  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 13'  (conf 0.982)
+2026-05-13 22:21:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.982   1972.4 ms  '2 13'
+2026-05-13 22:21:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.982 ≥ 0.550)
+2026-05-13 22:21:38  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 13'  →  sanitised='213'
+2026-05-13 22:21:38  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 213.000
+2026-05-13 22:21:38  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 1974.8 ms
+2026-05-13 22:21:38  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.982  latency=1975 ms
+2026-05-13 22:21:41  [INFO    ]  AIWhiteboard.__main__  —  Running OCR benchmark …
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'tesseract'
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'easyocr'
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'trocr'
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Contour noise removal: dropped 1 micro-contours
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Preprocess complete: 1280x720 → 1672x912
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.ocr.tesseract_engine  —  ⏱  Tesseract inference              377.36 ms
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.ocr.tesseract_engine  —  Tesseract  → 'lie'  (conf 0.430)
+2026-05-13 22:21:41  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Contour noise removal: dropped 1 micro-contours
+2026-05-13 22:21:42  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Preprocess complete: 1280x720 → 1672x912
+2026-05-13 22:21:42  [DEBUG   ]  AIWhiteboard.ocr.tesseract_engine  —  ⏱  Tesseract inference              179.89 ms
+2026-05-13 22:21:42  [DEBUG   ]  AIWhiteboard.ocr.tesseract_engine  —  Tesseract  → 'lie'  (conf 0.430)
+2026-05-13 22:21:42  [INFO    ]  AIWhiteboard.ocr.easyocr_engine  —  Loading EasyOCR  (gpu=False, langs=['en']) …
+2026-05-13 22:22:08  [DEBUG   ]  AIWhiteboard.ocr.easyocr_engine  —  ⏱  EasyOCR Reader init             25218.89 ms
+2026-05-13 22:22:08  [INFO    ]  AIWhiteboard.ocr.easyocr_engine  —  EasyOCR ready.
+2026-05-13 22:22:13  [DEBUG   ]  AIWhiteboard.ocr.easyocr_engine  —  ⏱  EasyOCR inference               3691.01 ms
+2026-05-13 22:22:16  [DEBUG   ]  AIWhiteboard.ocr.easyocr_engine  —  ⏱  EasyOCR inference               3175.41 ms
+2026-05-13 22:22:18  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 1952.51 ms
+2026-05-13 22:22:18  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 13'  (conf 0.982)
+2026-05-13 22:22:20  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 1979.25 ms
+2026-05-13 22:22:20  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 13'  (conf 0.982)
+2026-05-13 22:24:37  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:24:39  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2774.65 ms
+2026-05-13 22:24:39  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2th 3'  (conf 0.981)
+2026-05-13 22:24:39  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.981   2780.6 ms  '2th 3'
+2026-05-13 22:24:39  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.981 ≥ 0.550)
+2026-05-13 22:24:39  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2th 3'  →  sanitised='2*th3'
+2026-05-13 22:24:39  [WARNING ]  AIWhiteboard.ocr.equation_parser  —  Parser failed on '2*th3': name should be a string, not <class 'sympy.core.symbol.Symbol'>
+2026-05-13 22:24:39  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Parser: ⚠ Parse error: name should be a string, not <class 'sympy.core.symbol.Symbol'>
+2026-05-13 22:24:39  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2782.8 ms
+2026-05-13 22:24:39  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.981  latency=2783 ms
+2026-05-13 22:26:09  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:26:11  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2010.10 ms
+2026-05-13 22:26:11  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 3'  (conf 0.987)
+2026-05-13 22:26:11  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.987   2015.3 ms  '2 3'
+2026-05-13 22:26:11  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.987 ≥ 0.550)
+2026-05-13 22:26:11  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 3'  →  sanitised='23'
+2026-05-13 22:26:11  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 23.0000
+2026-05-13 22:26:11  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2017.3 ms
+2026-05-13 22:26:11  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.987  latency=2017 ms
+2026-05-13 22:27:48  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:27:51  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2710.60 ms
+2026-05-13 22:27:51  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '22th h.'  (conf 0.949)
+2026-05-13 22:27:51  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.949   2714.5 ms  '22th h.'
+2026-05-13 22:27:51  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.949 ≥ 0.550)
+2026-05-13 22:27:51  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='22th h.'  →  sanitised='22*thh.'
+2026-05-13 22:27:51  [WARNING ]  AIWhiteboard.ocr.equation_parser  —  Parser failed on '22*thh.': invalid syntax (<string>, line 1)
+2026-05-13 22:27:51  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Parser: ⚠ Parse error: invalid syntax (<string>, line 1)
+2026-05-13 22:27:51  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2716.5 ms
+2026-05-13 22:27:51  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.949  latency=2717 ms
+2026-05-13 22:28:01  [INFO    ]  AIWhiteboard.__main__  —  Running OCR benchmark …
+2026-05-13 22:28:01  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'tesseract'
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'easyocr'
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.utils.benchmark  —  Benchmark: registered engine 'trocr'
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Preprocess: canvas is blank — skipping OCR.
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.ocr.preprocess  —  Preprocess: canvas is blank — skipping OCR.
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR: canvas is blank.
+2026-05-13 22:28:02  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR: canvas is blank.
+2026-05-13 22:29:17  [INFO    ]  AIWhiteboard.__main__  —  Running Hybrid OCR pipeline …
+2026-05-13 22:29:19  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  ⏱  TrOCR inference                 2192.03 ms
+2026-05-13 22:29:19  [DEBUG   ]  AIWhiteboard.ocr.trocr_engine  —  TrOCR  → '2 43'  (conf 0.994)
+2026-05-13 22:29:19  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR  trocr       conf=0.994   2197.3 ms  '2 43'
+2026-05-13 22:29:19  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  OCR accepted from trocr (conf 0.994 ≥ 0.550)
+2026-05-13 22:29:19  [DEBUG   ]  AIWhiteboard.ocr.equation_parser  —  Parser: raw='2 43'  →  sanitised='243'
+2026-05-13 22:29:19  [INFO    ]  AIWhiteboard.ocr.hybrid_ocr  —  Solved: 243.000
+2026-05-13 22:29:19  [DEBUG   ]  AIWhiteboard.ocr.hybrid_ocr  —  Hybrid pipeline total: 2199.0 ms
+2026-05-13 22:29:19  [INFO    ]  AIWhiteboard.__main__  —  OCR done  engine=trocr       conf=0.994  latency=2199 ms
+2026-05-13 22:30:17  [INFO    ]  AIWhiteboard.__main__  —  Shutting down …
+2026-05-13 22:30:17  [INFO    ]  AIWhiteboard.__main__  —  Canvas saved → drawings\autosave.png
+2026-05-13 22:30:17  [INFO    ]  AIWhiteboard.__main__  —  ✅  Clean shutdown complete.
