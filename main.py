@@ -11,8 +11,7 @@
 ╚══════════════════════════════════════════════════════════════════╝
 
 Python   : 3.11+
-Author   : github.com/yourname
-License  : MIT
+Author   : Devika Das
 """
 
 from __future__ import annotations
