@@ -5,12 +5,14 @@ optimised for handwritten mathematical equations on a dark canvas.
 Pipeline stages
 ---------------
 1. Crop to ink bounding box       → removes dead space
-2. Upscale (cubic)                → ~300 DPI equivalent for Tesseract/TrOCR
-3. Adaptive Gaussian threshold    → handles variable brush opacity
-4. Morphological close            → bridges micro-gaps in strokes
-5. Contour noise removal          → drops isolated dust specks
-6. fastNlMeans denoise            → final speckle suppression
-7. Optional border pad            → models prefer context around glyphs
+2. Upscale (cubic, ×4.0)          → ~400 DPI equivalent for Tesseract/TrOCR
+3. Gaussian blur 5×5              → smooths jagged upscaled edges pre-threshold
+4. Adaptive Gaussian threshold    → handles variable brush opacity (block=31, C=12)
+4b. Fine 2×2 morph close         → bridges hairline stroke gaps without over-expanding
+5. Morphological close (ellipse) → bridges larger micro-gaps in strokes
+6. Contour noise removal          → drops isolated dust specks
+7. fastNlMeans denoise            → final speckle suppression
+8. Optional border pad            → models prefer context around glyphs
 
 Each stage can be independently toggled via Config for debugging.
 """
@@ -108,15 +110,36 @@ class EquationPreprocessor:
         )
         _save("3_upscale", scaled)
 
+        # ── Stage 3b: Gaussian blur ────────────────────────
+        # Applied BEFORE thresholding to smooth jagged brush edges.
+        # A 5×5 kernel removes sub-pixel noise introduced by upscaling
+        # without blurring the thick strokes that carry glyph shape.
+        blurred: GRAY = cv2.GaussianBlur(scaled, (5, 5), 0)
+        _save("3b_blur", blurred)
+
         # ── Stage 4: Adaptive threshold ────────────────────
+        # blockSize=31: wider neighbourhood handles the thicker strokes
+        #   produced by OCR_SCALE=4.0 (strokes are now ~4× wider in px).
+        # C=12: stronger constant subtraction → cleaner white background.
         thresh: BINARY = cv2.adaptiveThreshold(
-            scaled, 255,
+            blurred, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY_INV,
-            blockSize=self._cfg.adaptive_block,
-            C=self._cfg.adaptive_c,
+            blockSize=31,
+            C=12,
         )
         _save("4_threshold", thresh)
+
+        # ── Stage 4b: Fine morphological cleanup ──────────
+        # A small 2×2 kernel closes hairline breaks that the larger
+        # MORPH_ELLIPSE kernel (Stage 5) would over-expand.
+        # This two-pass approach preserves thin strokes (fractions,
+        # exponent bars) while still bridging micro-gaps.
+        fine_kernel: np.ndarray = np.ones((2, 2), np.uint8)
+        thresh = cv2.morphologyEx(
+            thresh, cv2.MORPH_CLOSE, fine_kernel
+        )
+        _save("4b_fine_morph", thresh)
 
         # ── Stage 5: Morphological closing ────────────────
         closed: BINARY = cv2.morphologyEx(
