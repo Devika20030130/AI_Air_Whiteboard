@@ -101,14 +101,26 @@ class HybridOCRPipeline:
         """
         Run the full hybrid pipeline on *canvas_bgr*.
 
+        Pipeline
+        --------
+        1. Waterfall  — run engines in priority order; early-exit when
+           confidence ≥ accept_threshold (now 0.85).
+        2. Voting     — when multiple engines produce results, pick the
+           one whose text scores highest on a math-symbol quality metric
+           rather than raw model confidence alone.
+        3. Parse & Solve — pass winning text to EquationParser / SymPy.
+        4. Debug      — optional preprocessed-image and stage-grid windows.
+
         Returns an OCRResult regardless of success — callers should
         check `.text` and `.confidence` to decide what to display.
         """
         t_start = time.perf_counter()
         all_results: List[Tuple[str, str, float]] = []
-        best_text, best_conf, best_engine = "", 0.0, "none"
 
         # ── Waterfall ─────────────────────────────────────
+        # With accept_threshold=0.85 most real handwriting will NOT
+        # early-exit, so all three engines run and populate all_results
+        # for the voting step below.
         for engine_name in self._cfg.engine_priority:
             fn = self._engine_map.get(engine_name)
             if fn is None:
@@ -128,26 +140,22 @@ class HybridOCRPipeline:
                     (text[:35] + "…") if len(text) > 36 else text,
                 )
 
-            if conf > best_conf:
-                best_text, best_conf, best_engine = text, conf, engine_name
-
-            # Early exit if this result is good enough
+            # Early exit only when we are highly confident
             if conf >= self._cfg.accept_threshold and text:
                 log.info(
-                    "OCR accepted from %s (conf %.3f ≥ %.3f)",
+                    "OCR early-exit from %s (conf %.3f ≥ %.3f)",
                     engine_name, conf, self._cfg.accept_threshold,
                 )
                 break
-        else:
-            # Exhausted all engines without hitting threshold
-            if best_text:
-                log.warning(
-                    "All OCR engines below threshold %.3f — "
-                    "using best: %s (%.3f)",
-                    self._cfg.accept_threshold, best_engine, best_conf,
-                )
-            else:
-                log.warning("OCR: no text detected by any engine.")
+
+        # ── Voting — pick the cleanest mathematical expression ─
+        # When multiple engines ran, we combine model confidence with a
+        # math-symbol quality score so that an engine returning "2x+5=11"
+        # beats one returning "Zx+5=ll" even if both have similar conf.
+        best_text, best_conf, best_engine = self._vote(all_results)
+
+        if not best_text:
+            log.warning("OCR: no text detected by any engine.")
 
         # ── Parse & Solve ─────────────────────────────────
         parse_result: Optional[ParseResult] = None
@@ -161,6 +169,10 @@ class HybridOCRPipeline:
         # ── Debug visualisation ───────────────────────────
         if self._cfg.debug_visualize and self.preprocessor.debug_stages:
             self._show_debug(canvas_bgr, all_results)
+
+        # ── Preprocessed-image preview (toggled by 'p') ───
+        if self._cfg.show_preprocessed:
+            self._show_preprocessed_window(canvas_bgr)
 
         latency_ms = (time.perf_counter() - t_start) * 1000
         log.debug("Hybrid pipeline total: %.1f ms", latency_ms)
@@ -192,6 +204,118 @@ class HybridOCRPipeline:
         if binary is None:
             return "", 0.0
         return self.tesseract.recognize(canvas_bgr, preprocessor=self.preprocessor)
+
+    # ──────────────────────────────────────────────────────────
+    #  VOTING  —  pick the cleanest mathematical expression
+    # ──────────────────────────────────────────────────────────
+    @staticmethod
+    def _math_quality_score(text: str) -> float:
+        """
+        Return a [0, 1] quality score based on how much the text
+        looks like a valid mathematical expression.
+
+        Scoring rules
+        -------------
+        +0.10 per valid math symbol found  (+/-*/=^x)
+        +0.05 per digit
+        -0.20 per obviously non-math char  (@#%&_\\~`'")
+        Clamped to [0, 1].
+
+        This is fast (pure string scan, no regex) and intentionally
+        simple — it supplements confidence, not replaces it.
+        """
+        if not text:
+            return 0.0
+
+        VALID_MATH   = set("0123456789+-*/=^().x ")
+        GOOD_SYMBOLS = set("+-*/=^")
+        BAD_CHARS    = set('@#%&_\\~`\'"!?;:,<>{[]}')
+
+        score = 0.0
+        for ch in text:
+            if ch in GOOD_SYMBOLS:
+                score += 0.10
+            elif ch.isdigit():
+                score += 0.05
+            elif ch in BAD_CHARS:
+                score -= 0.20
+
+        # Normalise by length so longer results don't win unfairly
+        normalised = score / max(len(text), 1)
+        return float(max(0.0, min(1.0, normalised + 0.5)))  # bias centre at 0.5
+
+    def _vote(
+        self,
+        results: List[Tuple[str, str, float]],
+    ) -> Tuple[str, float, str]:
+        """
+        Choose the best result from all engines using a combined score:
+
+            combined = 0.60 × model_confidence + 0.40 × math_quality_score
+
+        This means an engine with conf=0.70 but clean math output
+        ("2x+5=11") can beat an engine with conf=0.75 but garbled
+        output ("Zx+5=Il").  The 60/40 split keeps model confidence
+        dominant while giving math quality meaningful influence.
+
+        Returns (best_text, best_conf, best_engine_name).
+        """
+        if not results:
+            return "", 0.0, "none"
+
+        best_combined = -1.0
+        best_text, best_conf, best_engine = "", 0.0, "none"
+
+        for engine_name, text, conf in results:
+            if not text:
+                continue
+            math_score   = self._math_quality_score(text)
+            combined     = 0.60 * conf + 0.40 * math_score
+            log.debug(
+                "Vote  %-10s  conf=%.3f  math=%.3f  combined=%.3f  %r",
+                engine_name, conf, math_score, combined, text[:40],
+            )
+            if combined > best_combined:
+                best_combined = combined
+                best_text     = text
+                best_conf     = conf
+                best_engine   = engine_name
+
+        if best_text:
+            log.info(
+                "Voting winner: %-10s  (combined %.3f)  %r",
+                best_engine, best_combined, best_text[:40],
+            )
+        else:
+            log.warning("Voting: all engines returned empty text.")
+
+        return best_text, best_conf, best_engine
+
+    # ──────────────────────────────────────────────────────────
+    #  PREPROCESSED PREVIEW WINDOW  (toggled by 'p')
+    # ──────────────────────────────────────────────────────────
+    def _show_preprocessed_window(self, canvas_bgr: np.ndarray) -> None:
+        """
+        Show the final binary preprocessed image that is fed into
+        Tesseract.  Lets the user instantly see whether their
+        handwriting is clean enough for OCR without reading logs.
+
+        Triggered when CFG.hybrid.show_preprocessed is True.
+        Toggled at runtime by pressing 'p' in the main loop.
+        """
+        binary = self.preprocessor.process(canvas_bgr, collect_debug=False)
+        if binary is not None:
+            # Scale down so it doesn't cover the whiteboard window
+            from utils.image_utils import fit_to_width
+            preview = fit_to_width(binary, max_w=600)
+            cv2.imshow("OCR Preprocessed  [p to close]", preview)
+            cv2.waitKey(1)
+        else:
+            # Close the window if canvas is blank
+            try:
+                cv2.destroyWindow("OCR Preprocessed  [p to close]")
+            except Exception:
+                pass
 
     # ──────────────────────────────────────────────────────────
     #  DEBUG WINDOW
