@@ -23,8 +23,8 @@ DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
 @dataclass(frozen=True)
 class CameraConfig:
     index:  int   = 0
-    width:  int   = 1280
-    height: int   = 720
+    width:  int   = 1920   # Upgraded: higher res → more ink detail for OCR
+    height: int   = 1080
     fps:    int   = 30
     # 1-frame internal buffer → minimum capture latency
     buffer_size: int = 1
@@ -35,20 +35,20 @@ class CameraConfig:
 class MediaPipeConfig:
     max_hands:             int   = 2
     model_complexity:      int   = 0   # 0 = fastest; 1 = accurate
-    detection_confidence:  float = 0.75
-    tracking_confidence:   float = 0.75
+    detection_confidence:  float = 0.85   # Raised: reduces false hand detections
+    tracking_confidence:   float = 0.85   # Raised: improves landmark stability
 
 
 @dataclass(frozen=True)
 class DrawingConfig:
-    brush_thickness:   int   = 8
+    brush_thickness:   int   = 4       # Reduced: thinner strokes → cleaner OCR glyphs
     brush_min:         int   = 2
     brush_max:         int   = 50
     brush_step:        int   = 2
     eraser_radius:     int   = 45
-    smooth_alpha:      float = 0.45   # EMA weight
+    smooth_alpha:      float = 0.25   # Lowered: heavier smoothing → less jitter
     smooth_window:     int   = 6
-    min_draw_dist:     int   = 3      # px — ignore micro-movements
+    min_draw_dist:     int   = 5      # Raised: ignores micro-tremor < 5 px
     canvas_ink_weight: float = 0.90   # ink opacity over camera feed
 
     # BGR colour palette  (White Red Green Blue Yellow Cyan Magenta Orange)
@@ -94,9 +94,9 @@ class UIConfig:
 @dataclass(frozen=True)
 class PreprocessConfig:
     """OpenCV preprocessing parameters."""
-    ocr_scale:          float = 2.5     # upscale before OCR (≈300 DPI)
-    adaptive_block:     int   = 21      # must be odd
-    adaptive_c:         int   = 8
+    ocr_scale:          float = 4.0     # Raised: ~400 DPI → sharper glyph edges for OCR
+    adaptive_block:     int   = 31      # Larger block: handles wider brush strokes
+    adaptive_c:         int   = 12      # Raised: stronger background suppression
     morph_iterations:   int   = 2
     denoise_h:          float = 12.0    # fastNlMeans filter strength
     # Minimum contour area to keep (removes dust specks)
@@ -161,10 +161,12 @@ class HybridOCRConfig:
     """
     # Order: highest accuracy first
     engine_priority: Tuple[str, ...] = ("trocr", "easyocr", "tesseract")
-    # Minimum combined confidence to accept a result without fallback
-    accept_threshold: float = 0.55
+    # Raised to 0.85: forces more engines to run → voting logic activates more often
+    accept_threshold: float = 0.85
     # Show a side-by-side debug window when OCR is triggered
     debug_visualize: bool   = False
+    # Show the final preprocessed binary image in a separate window (toggle: 'p')
+    show_preprocessed: bool = False
     # Log timing for each stage
     benchmark_each:  bool   = True
 
