@@ -11,7 +11,8 @@
 ╚══════════════════════════════════════════════════════════════════╝
 
 Python   : 3.11+
-Author   : Devika Das
+Author   : github.com/yourname
+License  : MIT
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import collections
 import os
 import sys
 import time
+import threading                        # NEW: async OCR runs off the main thread
 from enum import Enum, auto
 from typing import Deque, List, Optional, Tuple
 
@@ -260,6 +262,7 @@ class UIRenderer:
         ("✊",    "Clear (hold)"),
         ("r",    "Hybrid OCR + Solve"),
         ("d",    "Toggle OCR debug"),
+        ("p",    "Toggle preprocess preview"),   # NEW
         ("b",    "Benchmark all engines"),
         ("s",    "Save drawing"),
         ("l",    "Load autosave"),
@@ -282,6 +285,11 @@ class UIRenderer:
 
         # Last OCR result — shown in a persistent HUD band
         self._last_ocr: Optional[OCRResult] = None
+
+        # NEW: OCR-busy flag — set True while async thread is running
+        # so the render loop can draw a "Processing OCR…" overlay
+        # without the main loop blocking on the inference call.
+        self.ocr_running: bool = False
 
     def tick(self) -> float:
         now = time.perf_counter()
@@ -381,6 +389,28 @@ class UIRenderer:
             self._label(out, self._notif_text, (nx, H - 60),
                         c, scale=0.72, thickness=2)
             self._notif_timer -= 1
+
+        # ── NEW: OCR loading overlay ───────────────────────────
+        # Displayed every frame while the async OCR thread is alive.
+        # A pulsing dot-counter (. / .. / ...) gives visual feedback
+        # that inference is running without freezing the main loop.
+        if self.ocr_running:
+            dots = "." * (int(time.time() * 2) % 3 + 1)   # cycles 1-2-3 Hz
+            msg  = f"Processing OCR{dots}"
+            (tw2, th2), _ = cv2.getTextSize(
+                msg, cv2.FONT_HERSHEY_SIMPLEX, 0.78, 2
+            )
+            bx = (W - tw2) // 2 - 10
+            by = H // 2 - 26
+            # Semi-transparent dark panel behind text
+            overlay = out.copy()
+            cv2.rectangle(overlay,
+                          (bx - 8, by - 4), (bx + tw2 + 18, by + th2 + 10),
+                          (20, 20, 20), -1)
+            cv2.addWeighted(overlay, 0.72, out, 0.28, 0, out)
+            cv2.putText(out, msg, (bx, by + th2),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.78,
+                        (80, 220, 255), 2, cv2.LINE_AA)
 
         # OCR result band
         self._draw_ocr_band(out)
@@ -586,21 +616,53 @@ class AIWhiteboardApp:
 
     # ──────────────────────────────────────────────────────────
     def _do_ocr(self) -> None:
-        """Run hybrid OCR and update the UI with the result."""
-        log.info("Running Hybrid OCR pipeline …")
-        self._ui.notify("🔍  Running OCR…", dur=40)
+        """
+        Launch the Hybrid OCR pipeline on a background thread so the
+        main render loop keeps running at full FPS during inference.
 
-        result = self._ocr.run(self._canvas.image)
-        self._ui.set_last_ocr(result)
+        Thread safety
+        -------------
+        * `self._ui.ocr_running` is set/cleared from the worker thread.
+          It is a plain bool — Python's GIL makes single-assignment
+          reads/writes atomic, so no Lock is needed here.
+        * `self._canvas.image` is read once at call time and passed as
+          a snapshot (`canvas_snapshot`) so drawing can continue without
+          the OCR thread seeing a partially-modified canvas.
+        * `self._ui.notify` and `self._ui.set_last_ocr` each perform a
+          single attribute assignment — also GIL-safe.
+        """
+        # Guard: don't stack multiple OCR threads
+        if self._ui.ocr_running:
+            self._ui.notify("⏳  OCR already running…")
+            return
 
-        if result.text:
-            self._ui.notify(result.display_text, dur=180)
-            log.info(
-                "OCR done  engine=%-10s  conf=%.3f  latency=%.0f ms",
-                result.engine_used, result.confidence, result.latency_ms,
-            )
-        else:
-            self._ui.notify("⚠  No text detected")
+        # Take an immutable snapshot of the canvas at trigger time
+        canvas_snapshot: np.ndarray = self._canvas.image.copy()
+        log.info("OCR triggered — spawning background thread.")
+
+        def _worker() -> None:
+            self._ui.ocr_running = True
+            try:
+                result = self._ocr.run(canvas_snapshot)
+                self._ui.set_last_ocr(result)
+                if result.text:
+                    self._ui.notify(result.display_text, dur=180)
+                    log.info(
+                        "OCR done  engine=%-10s  conf=%.3f  latency=%.0f ms",
+                        result.engine_used, result.confidence, result.latency_ms,
+                    )
+                else:
+                    self._ui.notify("⚠  No text detected")
+            except Exception as exc:
+                log.error("OCR worker exception: %s", exc)
+                self._ui.notify("⚠  OCR error — see log")
+            finally:
+                # Always clear the flag so the UI stops showing the spinner
+                self._ui.ocr_running = False
+
+        # daemon=True: thread auto-dies if the app exits before it finishes
+        t = threading.Thread(target=_worker, daemon=True, name="ocr-worker")
+        t.start()
 
     # ──────────────────────────────────────────────────────────
     def _do_benchmark(self) -> None:
@@ -644,6 +706,22 @@ class AIWhiteboardApp:
             state = "ON" if not current else "OFF"
             self._ui.notify(f"OCR Debug  {state}")
             log.info("OCR debug visualisation: %s", state)
+
+        elif key == ord("p"):
+            # Toggle the preprocessed binary image preview window.
+            # Shows exactly what Tesseract / TrOCR see — invaluable for
+            # diagnosing why OCR misreads a particular character.
+            current_p = CFG.hybrid.show_preprocessed
+            object.__setattr__(CFG.hybrid, "show_preprocessed", not current_p)
+            state_p = "ON" if not current_p else "OFF"
+            self._ui.notify(f"Preprocess preview  {state_p}")
+            log.info("Preprocessed preview window: %s", state_p)
+            # If turning off, close the window immediately
+            if current_p:
+                try:
+                    cv2.destroyWindow("OCR Preprocessed  [p to close]")
+                except Exception:
+                    pass
 
         elif key == ord("b"):
             self._do_benchmark()
