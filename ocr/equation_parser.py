@@ -68,7 +68,7 @@ class EquationParser:
     # ──────────────────────────────────────────────────────────
     def parse_and_solve(self, raw: str) -> ParseResult:
         """
-        Full pipeline: sanitise → classify → solve.
+        Full pipeline: correct → sanitise → classify → solve.
 
         Parameters
         ----------
@@ -81,7 +81,15 @@ class EquationParser:
         if not raw or not raw.strip():
             return ParseResult(raw, "", "Empty input", False, False)
 
-        sanitised = self._sanitise(raw)
+        # ── OCR character-correction ───────────────────────────
+        # Common misreads from handwritten digits/operators.
+        # Applied on the raw string BEFORE any regex or SymPy parsing
+        # so these corrections propagate through the entire pipeline.
+        corrected = self._correct_ocr_chars(raw)
+        if corrected != raw:
+            log.debug("Parser: OCR correction  %r → %r", raw, corrected)
+
+        sanitised = self._sanitise(corrected)
         if not sanitised:
             return ParseResult(
                 raw, sanitised,
@@ -101,6 +109,61 @@ class EquationParser:
                 raw, sanitised,
                 f"⚠ Parse error: {exc}", is_eq, False, str(exc),
             )
+
+    # ──────────────────────────────────────────────────────────
+    #  OCR CHARACTER CORRECTION
+    # ──────────────────────────────────────────────────────────
+    @staticmethod
+    def _correct_ocr_chars(text: str) -> str:
+        """
+        Fix common single-character misreads that OCR engines make
+        on handwritten mathematical notation.
+
+        These substitutions are applied on the RAW string before any
+        regex or SymPy processing so they propagate through the full
+        sanitisation pipeline.
+
+        Why each correction is needed
+        ──────────────────────────────
+        'A' → '4'  : capital A is morphologically similar to 4
+        'O' → '0'  : capital O is identical to zero in many hands
+        'l' → '1'  : lowercase l is identical to 1 in most fonts
+        '|' → '1'  : pipe character is read as 1 by CRNN models
+        'S' → '5'  : handwritten S and 5 share the same curves
+
+        Safety: substitutions only apply when the character is
+        surrounded by digits or math operators — this avoids
+        corrupting genuine variable names like 'x', 'y', 'A'.
+        """
+        import re
+
+        # Characters surrounded by digit/operator context → correct them.
+        # Pattern: optional leading [digit/(] + target char + optional trailing [digit/)]
+        _MATH_CTX = r"(?<=[0-9(+\-*/^=])|(?=[0-9)+\-*/^=])"
+
+        corrections = {
+            "A": "4",
+            "O": "0",
+            "l": "1",
+            "|": "1",
+            "S": "5",
+        }
+
+        result = text
+        for wrong, right in corrections.items():
+            # Replace the character when it appears between numeric/operator chars,
+            # or at the start/end of the string if surrounded on one side.
+            result = re.sub(
+                rf"(?<=[0-9(+\-*/^=\s]){re.escape(wrong)}(?=[0-9)+\-*/^=\s])",
+                right,
+                result,
+            )
+
+        # Also strip all spaces — OCR engines frequently insert spaces
+        # inside numbers and operators (e.g. "2 x + 5 = 1 1")
+        result = result.replace(" ", "")
+
+        return result
 
     # ──────────────────────────────────────────────────────────
     #  SANITISATION
